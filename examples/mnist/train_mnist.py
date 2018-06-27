@@ -3,6 +3,9 @@
 from __future__ import print_function
 
 import argparse
+import os
+import glob
+import re
 
 import chainer
 import chainer.functions as F
@@ -40,6 +43,8 @@ def main():
                         help='GPU ID (negative value indicates CPU)')
     parser.add_argument('--out', '-o', default='result',
                         help='Directory to output the result')
+    parser.add_argument('--snapshot-filename', default='snapshot_iter_{.updater.iteration}',
+                        help='Name of snapshot file')
     parser.add_argument('--resume', '-r', default='',
                         help='Resume the training from snapshot')
     parser.add_argument('--unit', '-u', type=int, default=1000,
@@ -88,7 +93,7 @@ def main():
 
     # Take a snapshot for each specified epoch
     frequency = args.epoch if args.frequency == -1 else max(1, args.frequency)
-    trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
+    trainer.extend(extensions.snapshot(filename=args.snapshot_filename), trigger=(frequency, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
@@ -115,8 +120,9 @@ def main():
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
 
-    if args.resume:
+    if args.resume and os.path.exists(args.resume):
         # Resume from a snapshot
+        print("Resuming a training from a snapshot '{}'".format(args.resume))
         chainer.serializers.load_npz(args.resume, trainer)
 
     # Run the training
